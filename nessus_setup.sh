@@ -67,14 +67,16 @@ is_rhel_family() {
     esac
 }
 
-is_installed() {
+installed_pkg_name() {
     if command -v dpkg >/dev/null 2>&1; then
-        dpkg -s "$PACKAGE_NAME" >/dev/null 2>&1
+        dpkg-query -W -f='${Package}\n' 2>/dev/null | grep -i '^nessus$'
     elif command -v rpm >/dev/null 2>&1; then
-        rpm -q "$PACKAGE_NAME" >/dev/null 2>&1
-    else
-        return 1
+        rpm -qa 2>/dev/null | grep -i '^nessus$'
     fi
+}
+
+is_installed() {
+    [ -n "$(installed_pkg_name)" ]
 }
 
 find_local_package() {
@@ -95,6 +97,14 @@ find_local_package() {
     fi
 
     ls -1 Nessus-*.deb Nessus-*.rpm 2>/dev/null
+}
+
+clear_immutable() {
+    if [ -d /opt/nessus ]; then
+        info "Clearing immutable attributes on /opt/nessus ..."
+        find /opt/nessus -exec chattr -i {} + 2>/dev/null
+        ok "Immutable attributes cleared."
+    fi
 }
 
 open_firewall() {
@@ -178,12 +188,18 @@ do_uninstall() {
     systemctl stop "$SERVICE_NAME" 2>/dev/null
     systemctl disable "$SERVICE_NAME" 2>/dev/null
 
-    if command -v dpkg >/dev/null 2>&1 && dpkg -s "$PACKAGE_NAME" >/dev/null 2>&1; then
-        info "Removing package via dpkg..."
-        dpkg -r "$PACKAGE_NAME"
-    elif command -v rpm >/dev/null 2>&1 && rpm -q "$PACKAGE_NAME" >/dev/null 2>&1; then
-        info "Removing package via rpm..."
-        rpm -e "$PACKAGE_NAME"
+    clear_immutable
+
+    local pkg_name
+    pkg_name=$(installed_pkg_name)
+    if [ -n "$pkg_name" ]; then
+        if command -v dpkg >/dev/null 2>&1; then
+            info "Removing package '$pkg_name' via dpkg..."
+            dpkg -r "$pkg_name" || warn "dpkg removal reported an error. Continuing cleanup."
+        else
+            info "Removing package '$pkg_name' via rpm..."
+            rpm -e "$pkg_name" || warn "rpm removal reported an error. Continuing cleanup."
+        fi
     else
         warn "Nessus package is not installed, continuing cleanup."
     fi
@@ -191,7 +207,11 @@ do_uninstall() {
     if [ -d /opt/nessus ]; then
         info "Removing /opt/nessus ..."
         rm -rf /opt/nessus
-        ok "Removed /opt/nessus."
+        if [ ! -d /opt/nessus ]; then
+            ok "Removed /opt/nessus."
+        else
+            error "Could not fully remove /opt/nessus. Some files may still be locked."
+        fi
     else
         info "/opt/nessus not present, skipping."
     fi
