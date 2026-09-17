@@ -103,7 +103,7 @@ check_required_files() {
             else
                 echo -e "${BLUE}静默模式: 正在下载插件包文件...${RESET}"
             fi
-            curl -A Mozilla -o "$PLUGINS_FILE" --url "https://plugins.nessus.org/v2/nessus.php?f=all-2.0.tar.gz&u=29fc85234e4cd7e636ae8e9232c55313&p=33e0396a01619108b7be1bb78954c458"
+            curl -A Mozilla -o "$PLUGINS_FILE" --url "https://plugins.nessus.org/v2/nessus.php?f=all-2.0.tar.gz&u=56b33ade57c60a01058b1506999a2431&p=1ee9c89d5379a119a56498f2d5dff674"
             if [ $? -eq 0 ]; then
                 if [ "$SILENT_MODE" = false ]; then
                     echo -e "${GREEN}✓ 插件包文件下载成功${RESET}"
