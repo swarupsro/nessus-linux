@@ -203,7 +203,10 @@ do_uninstall() {
     local pkg_name
     pkg_name=$(installed_pkg_name)
     if [ -n "$pkg_name" ]; then
-        if command -v dpkg >/dev/null 2>&1; then
+        if command -v apt >/dev/null 2>&1; then
+            info "Purging package '$pkg_name' via apt..."
+            apt purge -y "$pkg_name" || warn "apt purge reported an error. Continuing cleanup."
+        elif command -v dpkg >/dev/null 2>&1; then
             info "Removing package '$pkg_name' via dpkg..."
             dpkg -r "$pkg_name" || warn "dpkg removal reported an error. Continuing cleanup."
         else
@@ -214,16 +217,27 @@ do_uninstall() {
         warn "Nessus package is not installed, continuing cleanup."
     fi
 
-    if [ -d /opt/nessus ]; then
-        info "Removing /opt/nessus ..."
-        rm -rf /opt/nessus
-        if [ ! -d /opt/nessus ]; then
-            ok "Removed /opt/nessus."
-        else
-            error "Could not fully remove /opt/nessus. Some files may still be locked."
-        fi
+    info "Removing leftover directories..."
+    rm -rf /opt/nessus /etc/nessus /var/nessus
+    if [ ! -d /opt/nessus ] && [ ! -d /etc/nessus ] && [ ! -d /var/nessus ]; then
+        ok "Leftover directories removed."
     else
-        info "/opt/nessus not present, skipping."
+        warn "Some directories could not be fully removed."
+    fi
+
+    info "Removing leftover systemd units..."
+    rm -f /etc/systemd/system/nessusd.service \
+          /lib/systemd/system/nessusd.service \
+          /usr/lib/systemd/system/nessusd.service 2>/dev/null
+    systemctl daemon-reload 2>/dev/null
+    systemctl reset-failed 2>/dev/null
+    ok "systemd cleaned."
+
+    if command -v apt >/dev/null 2>&1; then
+        info "Cleaning unused packages..."
+        apt autoremove -y 2>/dev/null || true
+        apt autoclean 2>/dev/null || true
+        ok "Package cleanup finished."
     fi
 
     if [ "$purge_user" = true ]; then
