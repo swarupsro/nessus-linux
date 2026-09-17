@@ -1,4 +1,4 @@
-# Nessus Complete Crack Script
+# Nessus Complete Script
 
 This is a Shell script used to bypass Nessus online authentication and obtain full scanning functionality. The script automatically downloads the latest plugin package, configures the required files, and starts the Nessus service.
 
