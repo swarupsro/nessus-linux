@@ -1,0 +1,1 @@
+- Prefers English (not Chinese) for code comments, scripts, and documentation such as README files. Confidence: 0.8
