@@ -100,11 +100,21 @@ find_local_package() {
 }
 
 clear_immutable() {
-    if [ -d /opt/nessus ]; then
-        info "Clearing immutable attributes on /opt/nessus ..."
-        find /opt/nessus -exec chattr -i {} + 2>/dev/null
-        ok "Immutable attributes cleared."
+    if [ ! -d /opt/nessus ]; then
+        return 0
     fi
+
+    if ! command -v chattr >/dev/null 2>&1; then
+        warn "chattr is not installed. Install e2fsprogs so immutable flags can be cleared."
+        warn "Without it, rm may fail with 'Operation not permitted'."
+        return 0
+    fi
+
+    info "Clearing immutable attributes on /opt/nessus ..."
+    chattr -R -i /opt/nessus 2>/dev/null
+    find /opt/nessus -type f -exec chattr -i {} + 2>/dev/null
+    find /opt/nessus -type d -exec chattr -i {} + 2>/dev/null
+    ok "Immutable attributes cleared."
 }
 
 open_firewall() {
